@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>git bless you</title>
+  <meta name="description" content="당신에게 git의 축복이 있기를" />
+  <style>
+    :root { --bg:#0c1117; --fg:#e6edf3; --muted:#9da9b5; --card:#0f1620; --border:#2b3a50; --acc:#7ee787; --los:#ff7b72; --shadow:0 6px 18px rgba(0,0,0,.25); }
+    *{box-sizing:border-box}
+    html,body{min-height:100vh;background:var(--bg)}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Apple SD Gothic Neo,"맑은 고딕",sans-serif;color:var(--fg);background:var(--bg)}
+    .wrap{max-width:720px;margin:0 auto;padding:16px}
+    h1{margin:0;font-size:clamp(20px,5vw,28px)}
+    .sub{color:var(--muted);margin-top:6px;font-size:14px}
+
+    /* Panels & controls – mobile-first */
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;box-shadow:var(--shadow)}
+    .controls{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+    .controls .group{display:flex;gap:8px;flex:1;min-width:220px}
+    label{color:var(--muted);font-size:12px}
+    input[type=number], input[type=text]{flex:1;min-width:0;border:1px solid var(--border);background:#0b121a;color:var(--fg);border-radius:12px;padding:12px 10px;font-size:16px}
+    button{flex:0 0 auto;cursor:pointer;border:1px solid var(--border);background:#0b1420;color:var(--fg);border-radius:12px;padding:10px 12px;font-size:15px}
+    button:active{transform:translateY(1px)}
+    button:disabled{opacity:.6}
+    .mode{display:flex;gap:8px;align-items:center}
+    .mode label{display:flex;gap:6px;align-items:center;border:1px solid var(--border);padding:8px 10px;border-radius:10px;background:#0b1420;font-size:14px;cursor:pointer}
+    .mode input{accent-color:#7ee787}
+
+    /* Cards */
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:12px}
+    .card{background:#0b121a;border:1px solid var(--border);border-radius:14px;padding:12px;min-height:100px;display:flex;flex-direction:column;gap:8px}
+    .card .top{display:flex;align-items:center;justify-content:space-between}
+    .badge{font-size:12px;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:3px 8px}
+    .result{font-variant-numeric:tabular-nums;font-size:34px;font-weight:800;letter-spacing:.5px}
+    .win{outline:2px solid var(--acc);border-radius:16px;box-shadow:0 0 0 4px rgba(126,231,135,.12)}
+    .lose{outline:2px solid var(--los);border-radius:16px;box-shadow:0 0 0 4px rgba(255,123,114,.10)}
+    /* Winner/Loser Glow */
+    @keyframes resultGlow{0%{box-shadow:0 0 0 0 rgba(126,231,135,.4)}60%{box-shadow:0 0 14px 6px rgba(126,231,135,.55)}100%{box-shadow:0 0 0 0 rgba(126,231,135,.4)}}
+    @keyframes resultGlowLose{0%{box-shadow:0 0 0 0 rgba(255,123,114,.4)}60%{box-shadow:0 0 14px 6px rgba(255,123,114,.55)}100%{box-shadow:0 0 0 0 rgba(255,123,114,.4)}}
+    .win{animation:resultGlow .7s ease-out}
+    .lose{animation:resultGlowLose .7s ease-out}
+
+    /* Reveal animation */
+    @keyframes pulsePop{0%{transform:scale(.96)}60%{transform:scale(1.06)}100%{transform:scale(1)}}
+    .card.reveal{animation:pulsePop .3s ease-out}
+    .card.reveal .result{filter:drop-shadow(0 2px 6px rgba(126,231,135,.18))}
+
+    /* Summary */
+    .summary{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px;border-top:1px dashed var(--border);padding-top:8px}
+    .pill{border:1px solid var(--border);padding:8px 10px;border-radius:10px;background:#0b1420;font-size:14px}
+    .hidden{display:none!important}
+
+    /* Self-test (HTML hidden in prod) */
+    details.test{margin-top:12px;color:var(--muted)}
+    pre.testlog{background:#0b121a;border:1px solid var(--border);padding:10px;border-radius:10px;color:var(--fg);overflow:auto}
+
+    /* Responsive: single column on small screens */
+    @media (max-width: 480px){
+      .grid{grid-template-columns:1fr}
+      .controls{flex-direction:column}
+      button, input[type=number], input[type=text]{width:100%}
+    }
+
+    /* Toast */
+    .toast{position:fixed;top:14px;left:50%;transform:translateX(-50%) translateY(-20px);background:#0b1420;border:1px solid var(--border);color:var(--fg);padding:10px 14px;border-radius:12px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:transform .25s ease, opacity .25s ease;z-index:9999;white-space:nowrap;font-size:14px}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>git bless you</h1>
+    <div class="sub"><b>README</b> <i>당신에게 git의 축복이 있기를</i> </div>
+
+    <section class="panel" style="margin-top:12px">
+      <div class="controls">
+        <div class="mode" role="radiogroup" aria-label="입력 방식">
+          <label><input type="radio" name="mode" value="count" checked> 인원</label>
+          <label><input type="radio" name="mode" value="names"> 이름</label>
+        </div>
+        <div class="group" id="group-count" style="flex:1">
+          <div style="flex:1">
+            <label for="count">인원수</label>
+            <input id="count" type="number" inputmode="numeric" pattern="[0-9]*" min="2" max="100" value="6" />
+          </div>
+        </div>
+        <div class="group hidden" id="group-names" style="flex:1">
+          <div style="flex:1">
+            <input id="names" type="text" placeholder="이름들 (쉼표로 구분)" />
+          </div>
+        </div>
+        <button id="generate">라운드 시작</button>
+      </div>
+    </section>
+
+    <section id="cards" class="grid" aria-live="polite" aria-busy="false"></section>
+
+    <section id="sum" class="panel hidden" style="margin-top:10px">
+      <div class="summary">
+        <span class="pill" id="done">0 / 0 완료</span>
+        <span class="pill" id="hi">최고: -</span>
+        <span class="pill" id="lo">최저: -</span>
+        <span class="pill hidden" id="ties"></span>
+      </div>
+    </section>
+
+    <div id="toast" class="toast" aria-live="polite"></div>
+
+    <!-- Self-test UI hidden in prod
+    <details class="test">
+      <summary>🧪 Self-test (dev)</summary>
+      <pre id="testlog" class="testlog" aria-live="polite"></pre>
+      <button id="runtests" style="margin-top:8px">Run Self-Test</button>
+    </details>
+    -->
+  </div>
+
+  <script>
+    const $ = (s, r=document)=>r.querySelector(s);
+    const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
+
+    // Fisher–Yates shuffle (in-place)
+    function shuffleArray(arr){
+      for(let i=arr.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [arr[i],arr[j]] = [arr[j],arr[i]];
+      }
+      return arr;
+    }
+
+    const cards = $('#cards');
+    const sum = $('#sum');
+    const pDone = $('#done');
+    const pHi = $('#hi');
+    const pLo = $('#lo');
+    const pTies = $('#ties');
+    const toastEl = $('#toast');
+
+    function showToast(lines, holdMs=1600){
+      if(!toastEl) return;
+      const msg = Array.isArray(lines) ? lines.join('   ') : String(lines||'');
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      clearTimeout(showToast._tmr);
+      showToast._tmr = setTimeout(()=>{ toastEl.classList.remove('show'); }, holdMs);
+    }
+
+    let state = { players: [], lastN: 0, announced: false };
+    let TEST_MODE = false; // for future test harness
+    const REVEAL_DELAY_MS = 500; // sequential reveal gap for names mode
+
+    function rng(){
+      const u32 = new Uint32Array(1); crypto.getRandomValues(u32);
+      const v = Math.floor((u32[0] / 2**32) * 1000) + 1; // 1..1000
+      return Math.min(1000, Math.max(1, v));
+    }
+
+    function reset(n){
+      state.players = [];
+      state.lastN = n || state.lastN || 6;
+      state.announced = false;
+      cards.innerHTML = '';
+      sum.classList.add('hidden');
+      if(toastEl){ toastEl.classList.remove('show'); toastEl.textContent=''; }
+    }
+
+    function start(n){ // numeric mode (manual roll)
+      reset(n);
+      for(let i=0;i<state.lastN;i++){
+        const p = {id:i+1,name:`P${i+1}`,value:null,rolled:false};
+        state.players.push(p);
+        cards.appendChild(renderCard(p));
+      }
+      sum.classList.remove('hidden');
+      updateSummary();
+      const first = $$('.card button:not(:disabled)')[0];
+      if(first) first.focus({preventScroll:true});
+    }
+
+    function startByNames(names){ // names mode (auto roll per name)
+      const clean = names
+        .split(',')
+        .map(s=>s.trim())
+        .filter(s=>s.length>0);
+      if(clean.length < 2) return alert('이름을 쉼표로 2명 이상 입력해주세요');
+      if(clean.length > 100) return alert('최대 100명까지 입력 가능합니다');
+
+      reset(clean.length);
+      clean.forEach((nm, i)=>{
+        const p = {id:i+1,name:nm,value:null,rolled:false};
+        state.players.push(p);
+        const card = renderCard(p);
+        cards.appendChild(card);
+      });
+      sum.classList.remove('hidden');
+      updateSummary();
+      // Auto-roll: sequential in normal mode (randomized order), synchronous in tests
+      let order = $$('.card button');
+      if(TEST_MODE){
+        order.forEach(btn=>{ if(!btn.disabled) btn.click(); });
+      } else {
+        order = shuffleArray(order);
+        order.forEach((btn, i)=>{
+          setTimeout(()=>{
+            const card = btn.closest('.card');
+            if(card){
+              card.classList.add('reveal');
+              setTimeout(()=>card.classList.remove('reveal'), 320);
+            }
+            if(!btn.disabled) btn.click();
+          }, i * REVEAL_DELAY_MS);
+        });
+      }
+    }
+
+    function renderCard(p){
+      const card = document.createElement('article');
+      card.className = 'card';
+      card.dataset.id = p.id;
+
+      const top = document.createElement('div');
+      top.className='top';
+      const title = document.createElement('div');
+      title.textContent = p.name || `Player ${p.id}`;
+      const badge = document.createElement('span');
+      badge.className='badge';
+      badge.textContent = `#${p.id}`;
+      top.append(title,badge);
+
+      const result = document.createElement('div');
+      result.className='result';
+      result.textContent='—';
+
+      const btn = document.createElement('button');
+      btn.textContent='ROLL';
+      btn.style.width='100%';
+
+      const rollOnce = ()=>{
+        if(p.rolled) return;
+        // common reveal animation for both modes
+        card.classList.add('reveal');
+        setTimeout(()=>card.classList.remove('reveal'), 320);
+        p.value = rng();
+        p.rolled = true;
+        result.textContent = p.value;
+        btn.disabled = true;
+        card.classList.remove('win','lose');
+        updateSummary();
+        const next = $$('.card button:not(:disabled)')[0];
+        if(next) next.focus();
+      };
+      btn.addEventListener('click', rollOnce);
+      // Whole card is tappable → trigger the same action as button
+      card.addEventListener('click', (e)=>{ if(e.target!==btn) rollOnce(); });
+
+      card.append(top,result,btn);
+      return card;
+    }
+
+    function updateSummary(){
+      const total = state.players.length;
+      const rolled = state.players.filter(x=>x.rolled);
+      pDone.textContent = `${rolled.length} / ${total} 완료`;
+      $$('.card').forEach(c=>c.classList.remove('win','lose'));
+      if(rolled.length===0){
+        pHi.textContent='최고: -';
+        pLo.textContent='최저: -';
+        pTies.textContent='';
+        pTies.classList.add('hidden');
+        return;
+      }
+      const max = Math.max(...rolled.map(x=>x.value));
+      const min = Math.min(...rolled.map(x=>x.value));
+      const highs = state.players.filter(x=>x.value===max);
+      const lows  = state.players.filter(x=>x.value===min);
+      pHi.textContent = `최고: ${max} (${highs.map(x=>x.name || `P${x.id}`).join(', ')})`;
+      pLo.textContent = `최저: ${min} (${lows.map(x=>x.name || `P${x.id}`).join(', ')})`;
+      highs.forEach(x=>{ const c = $(`.card[data-id="${x.id}"]`); if(c) c.classList.add('win'); });
+      lows.forEach(x=>{ const c = $(`.card[data-id="${x.id}"]`); if(c) c.classList.add('lose'); });
+      const tie = highs.length>1 || lows.length>1;
+      pTies.textContent = tie ? '동점 있음: 재도전 권장' : '';
+      pTies.classList.toggle('hidden', !tie);
+
+      // If all rolled and not yet announced, show compact toast
+      if(rolled.length===total && !state.announced){
+        const hiNames = highs.map(x=>x.name || `P${x.id}`).join(', ');
+        const loNames = lows.map(x=>x.name || `P${x.id}`).join(', ');
+        const hiMsg = `👍: ${hiNames} (${max})`;
+        const loMsg = `👎: ${loNames} (${min})`;
+        showToast([hiMsg, loMsg]);
+        state.announced = true;
+      }
+    }
+
+    // UI wiring
+    const modeRadios = $$('input[name="mode"]');
+    modeRadios.forEach(r=>r.addEventListener('change',()=>{
+      const m = $('input[name="mode"]:checked').value;
+      $('#group-count').classList.toggle('hidden', m!=='count');
+      $('#group-names').classList.toggle('hidden', m!=='names');
+    }));
+
+    $('#generate').addEventListener('click',()=>{
+      const mode = $('input[name="mode"]:checked').value;
+      if(mode==='count'){
+        const n = parseInt($('#count').value,10);
+        if(!Number.isFinite(n)||n<2) return alert('인원수 2명 이상');
+        if(n>100) return alert('최대 100명까지');
+        start(n);
+      } else {
+        const raw = $('#names').value || '';
+        startByNames(raw);
+      }
+    });
+
+    // Keyboard shortcuts (disabled while typing in inputs)
+    document.addEventListener('keydown',(e)=>{
+      const ae = document.activeElement;
+      const typing = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable);
+      if(typing) return; // do nothing while user is typing
+      if(e.key==='Enter'){
+        e.preventDefault();
+        $('#generate').click();
+      }
+      if(e.code==='Space'){
+        const next=$$('.card button:not(:disabled)')[0];
+        if(next){ e.preventDefault(); next.click(); }
+      }
+    });
+
+    // URL params: ?n=6&auto=1 or ?names=%EA%B9%80,%EC%9D%B4,%EB%B0%95
+    const url = new URL(location.href);
+    const pn = parseInt(url.searchParams.get('n')||'');
+    const auto = url.searchParams.get('auto');
+    const pnames = url.searchParams.get('names');
+    if(pnames){
+      $('input[name="mode"][value="names"]').checked = true;
+      $('#group-count').classList.add('hidden');
+      $('#group-names').classList.remove('hidden');
+      $('#names').value = decodeURIComponent(pnames);
+      if(auto){ startByNames($('#names').value); }
+    } else if(Number.isFinite(pn)){
+      $('#count').value = pn; if(auto){ start(pn); }
+    }
+
+    /* -------------------------------------------
+       🧪 Self Tests (JS hidden in prod)
+       Note: no nested block comments inside.
+    --------------------------------------------
+    function logTest(msg){
+      const el = document.getElementById('testlog');
+      if(el) el.textContent += msg + "\n";
+    }
+    async function runSelfTests(){
+      // Basic parse/run smoke
+      logTest('Parse OK');
+      // Count mode sanity
+      try{ start(3); logTest('start(3) OK'); }catch(e){ logTest('start(3) FAIL '+e.message); }
+    }
+    // document.getElementById('runtests')?.addEventListener('click', runSelfTests);
+    */
+  </script>
+</body>
+</html>
