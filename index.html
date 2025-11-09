@@ -10,7 +10,7 @@
     *{box-sizing:border-box}
     html,body{min-height:100vh;background:var(--bg)}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Apple SD Gothic Neo,"맑은 고딕",sans-serif;color:var(--fg);background:var(--bg)}
-    .wrap{max-width:720px;margin:0 auto;padding:16px}
+    .wrap{max-width:920px;margin:0 auto;padding:16px}
     h1{margin:0;font-size:clamp(20px,5vw,28px)}
     .sub{color:var(--muted);margin-top:6px;font-size:14px}
 
@@ -25,35 +25,57 @@
     button:disabled{opacity:.6}
     .mode{display:flex;gap:8px;align-items:center}
     .mode label{display:flex;gap:6px;align-items:center;border:1px solid var(--border);padding:8px 10px;border-radius:10px;background:#0b1420;font-size:14px;cursor:pointer}
+    .autoRoll{border:none!important;background:transparent!important;padding:0!important;font-size:14px;cursor:pointer;color:var(--muted)}
     .mode input{accent-color:#7ee787}
 
-    /* Cards */
+    /* Cards (normal/compact) */
     .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:12px}
-    .card{background:#0b121a;border:1px solid var(--border);border-radius:14px;padding:12px;min-height:100px;display:flex;flex-direction:column;gap:8px}
-    .card .top{display:flex;align-items:center;justify-content:space-between}
+    .grid.compact{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));}
+    .grid.compact .card{padding:8px;min-height:80px}
+    .grid.compact .result{font-size:24px}
+
+    /* Dense list-like modes (auto-chosen) */
+    .grid.list2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .grid.list3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    /* Inside card become two columns: title|result and whole card acts as button */
+    .grid.list2 .card, .grid.list3 .card{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:8px 10px;min-height:auto}
+    .grid.list2 .card .top, .grid.list3 .card .top{display:flex;align-items:center;min-width:0;gap:6px}
+    /* badge goes BEFORE the name in dense modes so it never covers text */
+    .grid.list2 .badge, .grid.list3 .badge{display:none !important; width:0; height:0; margin:0; padding:0;}
+    .grid.list2 .top > div, .grid.list3 .top > div{
+  flex:1;
+  min-width:0;
+  white-space:normal;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  line-height:1.2;
+}
+    .grid.list2 .result, .grid.list3 .result{font-size:20px;text-align:right;align-self:flex-end;width:100%;}
+    .grid.list2 .card button, .grid.list3 .card button{display:none}
+
+    .card{background:#0b121a;border:1px solid var(--border);border-radius:14px;padding:12px;min-height:100px;display:flex;flex-direction:column;gap:8px;min-width:0}
+    .card:focus-visible{outline:1px dashed var(--acc); outline-offset:3px}
+    .card .top{display:flex;align-items:center;justify-content:space-between;min-width:0}
+    .card .top > div{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .badge{font-size:12px;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:3px 8px}
     .result{font-variant-numeric:tabular-nums;font-size:34px;font-weight:800;letter-spacing:.5px}
-    .win{outline:2px solid var(--acc);border-radius:16px;box-shadow:0 0 0 4px rgba(126,231,135,.12)}
-    .lose{outline:2px solid var(--los);border-radius:16px;box-shadow:0 0 0 4px rgba(255,123,114,.10)}
-    /* Winner/Loser Glow */
+    .win{outline:2px solid var(--acc);border-radius:16px;box-shadow:0 0 0 4px rgba(126,231,135,.12);animation:resultGlow .7s ease-out}
+    .lose{outline:2px solid var(--los);border-radius:16px;box-shadow:0 0 0 4px rgba(255,123,114,.10);animation:resultGlowLose .7s ease-out}
     @keyframes resultGlow{0%{box-shadow:0 0 0 0 rgba(126,231,135,.4)}60%{box-shadow:0 0 14px 6px rgba(126,231,135,.55)}100%{box-shadow:0 0 0 0 rgba(126,231,135,.4)}}
     @keyframes resultGlowLose{0%{box-shadow:0 0 0 0 rgba(255,123,114,.4)}60%{box-shadow:0 0 14px 6px rgba(255,123,114,.55)}100%{box-shadow:0 0 0 0 rgba(255,123,114,.4)}}
-    .win{animation:resultGlow .7s ease-out}
-    .lose{animation:resultGlowLose .7s ease-out}
 
     /* Reveal animation */
     @keyframes pulsePop{0%{transform:scale(.96)}60%{transform:scale(1.06)}100%{transform:scale(1)}}
-    .card.reveal{animation:pulsePop .3s ease-out}
+    .card.reveal{animation:pulsePop .28s ease-out}
     .card.reveal .result{filter:drop-shadow(0 2px 6px rgba(126,231,135,.18))}
 
     /* Summary */
     .summary{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px;border-top:1px dashed var(--border);padding-top:8px}
     .pill{border:1px solid var(--border);padding:8px 10px;border-radius:10px;background:#0b1420;font-size:14px}
     .hidden{display:none!important}
-
-    /* Self-test (HTML hidden in prod) */
-    details.test{margin-top:12px;color:var(--muted)}
-    pre.testlog{background:#0b121a;border:1px solid var(--border);padding:10px;border-radius:10px;color:var(--fg);overflow:auto}
 
     /* Responsive: single column on small screens */
     @media (max-width: 480px){
@@ -74,13 +96,14 @@
 
     <section class="panel" style="margin-top:12px">
       <div class="controls">
-        <div class="mode" role="radiogroup" aria-label="입력 방식">
+        <div class="mode" role="radiogroup" aria-label="입력 방식" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;white-space:nowrap;">
           <label><input type="radio" name="mode" value="count" checked> 인원</label>
           <label><input type="radio" name="mode" value="names"> 이름</label>
+          <label class="autoRoll" style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="autoRoll"> 자동 ROLL</label>
         </div>
+        
         <div class="group" id="group-count" style="flex:1">
           <div style="flex:1">
-            <label for="count">인원수</label>
             <input id="count" type="number" inputmode="numeric" pattern="[0-9]*" min="2" max="100" value="6" />
           </div>
         </div>
@@ -105,17 +128,10 @@
     </section>
 
     <div id="toast" class="toast" aria-live="polite"></div>
-
-    <!-- Self-test UI hidden in prod
-    <details class="test">
-      <summary>🧪 Self-test (dev)</summary>
-      <pre id="testlog" class="testlog" aria-live="polite"></pre>
-      <button id="runtests" style="margin-top:8px">Run Self-Test</button>
-    </details>
-    -->
   </div>
 
   <script>
+    // ---------- Helpers ----------
     const $ = (s, r=document)=>r.querySelector(s);
     const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
 
@@ -145,26 +161,63 @@
       showToast._tmr = setTimeout(()=>{ toastEl.classList.remove('show'); }, holdMs);
     }
 
-    let state = { players: [], lastN: 0, announced: false };
-    let TEST_MODE = false; // for future test harness
-    const REVEAL_DELAY_MS = 500; // sequential reveal gap for names mode
+    // ---------- State ----------
+    let state = { players: [], lastN: 0, announced: false, autoRolling: false };
+    const REVEAL_DELAY_MS = 400; // 0.4s 간격
 
+    // ---------- View helpers ----------
+    function isListMode(){ return cards.classList.contains('list2') || cards.classList.contains('list3'); }
+    function getNextTarget(){
+      if(isListMode()){
+        const unrolledCard = $$('.card').find(c=>{
+          const id = parseInt(c.dataset.id,10); const p = state.players[id-1];
+          return p && !p.rolled;
+        });
+        return unrolledCard || null;
+      }
+      return $$('.card button:not(:disabled)')[0] || null;
+    }
+
+    // ---------- Auto roll (sequential) ----------
+    const wait = (ms)=> new Promise(r=>setTimeout(r, ms));
+    async function autoRollButtons(buttons){
+      if(state.autoRolling) return;
+      state.autoRolling = true;
+      for(const btn of buttons){
+        if(!btn || btn.disabled) continue;
+        const card = btn.closest('.card');
+        if(card){
+          card.classList.add('reveal');
+          try{ card.focus({preventScroll:true}); }catch(_){ }
+          try{ card.scrollIntoView({behavior:'smooth', block:'center', inline:'nearest'}); }catch(_){ }
+          setTimeout(()=>card.classList.remove('reveal'), 300);
+        }
+        btn.click();
+        await wait(REVEAL_DELAY_MS);
+      }
+      try{ document.activeElement && document.activeElement.blur && document.activeElement.blur(); }catch(_){ }
+      state.autoRolling = false;
+    }
+
+    // ---------- RNG ----------
     function rng(){
       const u32 = new Uint32Array(1); crypto.getRandomValues(u32);
       const v = Math.floor((u32[0] / 2**32) * 1000) + 1; // 1..1000
       return Math.min(1000, Math.max(1, v));
     }
 
+    // ---------- Core ----------
     function reset(n){
       state.players = [];
       state.lastN = n || state.lastN || 6;
       state.announced = false;
+      cards.className = 'grid'; // reset view classes
       cards.innerHTML = '';
       sum.classList.add('hidden');
       if(toastEl){ toastEl.classList.remove('show'); toastEl.textContent=''; }
     }
 
-    function start(n){ // numeric mode (manual roll)
+    function start(n){
       reset(n);
       for(let i=0;i<state.lastN;i++){
         const p = {id:i+1,name:`P${i+1}`,value:null,rolled:false};
@@ -173,49 +226,42 @@
       }
       sum.classList.remove('hidden');
       updateSummary();
-      const first = $$('.card button:not(:disabled)')[0];
-      if(first) first.focus({preventScroll:true});
+      autoLayoutToFit();
+      const auto = $('#autoRoll')?.checked;
+      if(auto){
+        const order = shuffleArray($$('.card button'));
+        autoRollButtons(order);
+      }
+      const first = getNextTarget();
+      if(first){ try{ first.focus({preventScroll:true}); }catch(_){} }
     }
 
-    function startByNames(names){ // names mode (auto roll per name)
-      const clean = names
-        .split(',')
-        .map(s=>s.trim())
-        .filter(s=>s.length>0);
-      if(clean.length < 2) return alert('이름을 쉼표로 2명 이상 입력해주세요');
-      if(clean.length > 100) return alert('최대 100명까지 입력 가능합니다');
+    function startByNames(names){
+      const clean = names.split(',').map(s=>s.trim()).filter(Boolean);
+      if(clean.length < 2){ alert('이름을 쉼표로 2명 이상 입력해주세요'); return; }
+      if(clean.length > 100){ alert('최대 100명까지 입력 가능합니다'); return; }
 
       reset(clean.length);
       clean.forEach((nm, i)=>{
         const p = {id:i+1,name:nm,value:null,rolled:false};
         state.players.push(p);
-        const card = renderCard(p);
-        cards.appendChild(card);
+        cards.appendChild(renderCard(p));
       });
       sum.classList.remove('hidden');
       updateSummary();
-      // Auto-roll: sequential in normal mode (randomized order), synchronous in tests
-      let order = $$('.card button');
-      if(TEST_MODE){
-        order.forEach(btn=>{ if(!btn.disabled) btn.click(); });
-      } else {
-        order = shuffleArray(order);
-        order.forEach((btn, i)=>{
-          setTimeout(()=>{
-            const card = btn.closest('.card');
-            if(card){
-              card.classList.add('reveal');
-              setTimeout(()=>card.classList.remove('reveal'), 320);
-            }
-            if(!btn.disabled) btn.click();
-          }, i * REVEAL_DELAY_MS);
-        });
+      autoLayoutToFit();
+
+      const auto = $('#autoRoll')?.checked;
+      if(auto){
+        const order = shuffleArray($$('.card button'));
+        autoRollButtons(order);
       }
     }
 
     function renderCard(p){
       const card = document.createElement('article');
       card.className = 'card';
+      card.tabIndex = 0; // focusable so Space works in list mode
       card.dataset.id = p.id;
 
       const top = document.createElement('div');
@@ -234,23 +280,22 @@
       const btn = document.createElement('button');
       btn.textContent='ROLL';
       btn.style.width='100%';
+      btn.style.maxWidth='100%';
 
       const rollOnce = ()=>{
         if(p.rolled) return;
-        // common reveal animation for both modes
         card.classList.add('reveal');
-        setTimeout(()=>card.classList.remove('reveal'), 320);
+        setTimeout(()=>card.classList.remove('reveal'), 300);
         p.value = rng();
         p.rolled = true;
         result.textContent = p.value;
         btn.disabled = true;
         card.classList.remove('win','lose');
         updateSummary();
-        const next = $$('.card button:not(:disabled)')[0];
-        if(next) next.focus();
+        const next = getNextTarget();
+        if(next){ try{ next.focus({preventScroll:true}); }catch(_){} }
       };
       btn.addEventListener('click', rollOnce);
-      // Whole card is tappable → trigger the same action as button
       card.addEventListener('click', (e)=>{ if(e.target!==btn) rollOnce(); });
 
       card.append(top,result,btn);
@@ -273,26 +318,47 @@
       const min = Math.min(...rolled.map(x=>x.value));
       const highs = state.players.filter(x=>x.value===max);
       const lows  = state.players.filter(x=>x.value===min);
-      pHi.textContent = `최고: ${max} (${highs.map(x=>x.name || `P${x.id}`).join(', ')})`;
-      pLo.textContent = `최저: ${min} (${lows.map(x=>x.name || `P${x.id}`).join(', ')})`;
+      const nameOf = (x)=> (x.name && x.name.length? x.name : `P${x.id}`);
+      pHi.textContent = `최고: ${max} (${highs.map(nameOf).join(', ')})`;
+      pLo.textContent = `최저: ${min} (${lows.map(nameOf).join(', ')})`;
       highs.forEach(x=>{ const c = $(`.card[data-id="${x.id}"]`); if(c) c.classList.add('win'); });
       lows.forEach(x=>{ const c = $(`.card[data-id="${x.id}"]`); if(c) c.classList.add('lose'); });
       const tie = highs.length>1 || lows.length>1;
       pTies.textContent = tie ? '동점 있음: 재도전 권장' : '';
       pTies.classList.toggle('hidden', !tie);
 
-      // If all rolled and not yet announced, show compact toast
       if(rolled.length===total && !state.announced){
-        const hiNames = highs.map(x=>x.name || `P${x.id}`).join(', ');
-        const loNames = lows.map(x=>x.name || `P${x.id}`).join(', ');
+        const hiNames = highs.map(nameOf).join(', ');
+        const loNames = lows.map(nameOf).join(', ');
         const hiMsg = `👍: ${hiNames} (${max})`;
         const loMsg = `👎: ${loNames} (${min})`;
         showToast([hiMsg, loMsg]);
         state.announced = true;
+        try{ document.activeElement && document.activeElement.blur && document.activeElement.blur(); }catch(_){ }
       }
     }
 
-    // UI wiring
+    // ---------- Auto layout selection (no user control) ----------
+    function clearViewClasses(){ cards.classList.remove('compact','list2','list3'); }
+    function overflow(){ return document.documentElement.scrollHeight > window.innerHeight + 2; }
+
+    function autoLayoutToFit(){
+      // try normal
+      clearViewClasses();
+      if(!overflow()) return;
+      // compact cards
+      cards.classList.add('compact');
+      if(!overflow()) return;
+      // 3-column dense rows
+      cards.classList.remove('compact');
+      cards.classList.add('list3');
+      if(!overflow()) return;
+      // 2-column dense rows
+      cards.classList.remove('list3');
+      cards.classList.add('list2');
+    }
+
+    // ---------- UI wiring ----------
     const modeRadios = $$('input[name="mode"]');
     modeRadios.forEach(r=>r.addEventListener('change',()=>{
       const m = $('input[name="mode"]:checked').value;
@@ -300,12 +366,23 @@
       $('#group-names').classList.toggle('hidden', m!=='names');
     }));
 
+    const countInput = $('#count');
+    if(countInput){
+      countInput.addEventListener('input', (e)=>{
+        const v = parseInt(e.target.value,10);
+        if(Number.isFinite(v) && v>100){
+          alert('최대 100명까지 입력 가능합니다');
+          e.target.value = 100;
+        }
+      });
+    }
+
     $('#generate').addEventListener('click',()=>{
       const mode = $('input[name="mode"]:checked').value;
       if(mode==='count'){
         const n = parseInt($('#count').value,10);
-        if(!Number.isFinite(n)||n<2) return alert('인원수 2명 이상');
-        if(n>100) return alert('최대 100명까지');
+        if(!Number.isFinite(n)||n<2){ alert('인원수 2명 이상'); return; }
+        if(n>100){ alert('최대 100명까지'); return; }
         start(n);
       } else {
         const raw = $('#names').value || '';
@@ -316,14 +393,21 @@
     // Keyboard shortcuts (disabled while typing in inputs)
     document.addEventListener('keydown',(e)=>{
       const ae = document.activeElement;
-      const typing = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable);
-      if(typing) return; // do nothing while user is typing
+      const isTyping = ae && (
+        (ae.tagName === 'INPUT' && (ae.type === 'text' || ae.type === 'number')) ||
+        ae.tagName === 'TEXTAREA' ||
+        ae.isContentEditable
+      );
+      if(isTyping) return;
+      const inCardsContext = cards.contains(ae) || ae === document.body || ae === document.documentElement || ae == null;
+      if(!inCardsContext) return;
       if(e.key==='Enter'){
         e.preventDefault();
         $('#generate').click();
+        return;
       }
       if(e.code==='Space'){
-        const next=$$('.card button:not(:disabled)')[0];
+        const next = getNextTarget();
         if(next){ e.preventDefault(); next.click(); }
       }
     });
@@ -344,20 +428,25 @@
     }
 
     /* -------------------------------------------
-       🧪 Self Tests (JS hidden in prod)
-       Note: no nested block comments inside.
+       🧪 Self Tests (hidden in UI; run manually from console)
+       NEVER change existing tests unless clearly wrong.
+       Added some edge cases + getNextTarget sanity.
     --------------------------------------------
-    function logTest(msg){
-      const el = document.getElementById('testlog');
-      if(el) el.textContent += msg + "\n";
-    }
+    // To run in console: runSelfTests()
+    function _logTest(msg){ const el = document.getElementById('testlog'); if(el) el.textContent += msg + "\n"; }
     async function runSelfTests(){
-      // Basic parse/run smoke
-      logTest('Parse OK');
-      // Count mode sanity
-      try{ start(3); logTest('start(3) OK'); }catch(e){ logTest('start(3) FAIL '+e.message); }
+      try{ start(3); _logTest('start(3) OK'); }catch(e){ _logTest('start(3) FAIL '+e.message); }
+      reset(0);
+      try{ startByNames('김, 이, 박'); _logTest('names basic OK'); }catch(e){ _logTest('names basic FAIL '+e.message); }
+      reset(0);
+      try{ startByNames('a,b,c,'); _logTest('names trailing comma OK'); }catch(e){ _logTest('names trailing comma FAIL '+e.message); }
+      reset(0);
+      try{ startByNames('x'); _logTest('names <2 should alert (manual)'); }catch(e){ _logTest('names <2 error '+e.message); }
+      // getNextTarget smoke
+      start(4);
+      const t = getNextTarget();
+      _logTest('getNextTarget returns: '+(t ? 'OK' : 'NULL'));
     }
-    // document.getElementById('runtests')?.addEventListener('click', runSelfTests);
     */
   </script>
 </body>
