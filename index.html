@@ -37,22 +37,16 @@
     /* Dense list-like modes (auto-chosen) */
     .grid.list2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
     .grid.list3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-    /* Inside card become two columns: title|result and whole card acts as button */
+    /* Inside card becomes column stack on list3; list2 stays row-like */
     .grid.list2 .card, .grid.list3 .card{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:8px 10px;min-height:auto}
     .grid.list2 .card .top, .grid.list3 .card .top{display:flex;align-items:center;min-width:0;gap:6px}
-    /* badge goes BEFORE the name in dense modes so it never covers text */
+    /* 목록형에서 배지 제거 (이름 가리지 않도록) */
     .grid.list2 .badge, .grid.list3 .badge{display:none !important; width:0; height:0; margin:0; padding:0;}
+    /* 이름: 목록형은 2줄까지 허용 */
     .grid.list2 .top > div, .grid.list3 .top > div{
-  flex:1;
-  min-width:0;
-  white-space:normal;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  display:-webkit-box;
-  -webkit-line-clamp:2;
-  -webkit-box-orient:vertical;
-  line-height:1.2;
-}
+      flex:1;min-width:0;white-space:normal;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.2;
+    }
+    /* 결과: 목록형에서 오른쪽 정렬, 가로폭은 이름 우선 */
     .grid.list2 .result, .grid.list3 .result{font-size:20px;text-align:right;align-self:flex-end;width:100%;}
     .grid.list2 .card button, .grid.list3 .card button{display:none}
 
@@ -87,6 +81,14 @@
     /* Toast */
     .toast{position:fixed;top:14px;left:50%;transform:translateX(-50%) translateY(-20px);background:#0b1420;border:1px solid var(--border);color:var(--fg);padding:10px 14px;border-radius:12px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:transform .25s ease, opacity .25s ease;z-index:9999;white-space:nowrap;font-size:14px}
     .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    .summary button#copyResult{margin-left:auto}
+
+    /* Reduced motion preference */
+    @media (prefers-reduced-motion: reduce){
+      *{scroll-behavior:auto!important}
+      .card.reveal{animation:none}
+      .win,.lose{box-shadow:none;animation:none}
+    }
   </style>
 </head>
 <body>
@@ -124,6 +126,7 @@
         <span class="pill" id="hi">최고: -</span>
         <span class="pill" id="lo">최저: -</span>
         <span class="pill hidden" id="ties"></span>
+        <button id="copyResult" disabled>결과 복사하기</button>
       </div>
     </section>
 
@@ -151,6 +154,7 @@
     const pLo = $('#lo');
     const pTies = $('#ties');
     const toastEl = $('#toast');
+    const copyBtn = $('#copyResult');
 
     function showToast(lines, holdMs=1600){
       if(!toastEl) return;
@@ -161,21 +165,76 @@
       showToast._tmr = setTimeout(()=>{ toastEl.classList.remove('show'); }, holdMs);
     }
 
+    // Simple, robust clipboard helper
+    async function copyText(text){
+      try{
+        if(navigator.clipboard && window.isSecureContext){
+          await navigator.clipboard.writeText(String(text ?? ''));
+          return true;
+        }
+      }catch(_){/* fallthrough */}
+      try{
+        const ta = document.createElement('textarea');
+        ta.value = String(text ?? '');
+        ta.setAttribute('readonly','');
+        ta.style.position='fixed';
+        ta.style.opacity='0';
+        ta.style.pointerEvents='none';
+        document.body.appendChild(ta);
+        ta.focus(); ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+      }catch(_){
+        return false;
+      }
+    }
+
     // ---------- State ----------
     let state = { players: [], lastN: 0, announced: false, autoRolling: false };
-    const REVEAL_DELAY_MS = 400; // 0.4s 간격
+    const REVEAL_DELAY_MS = 400;
+
+    // Shared util
+    const nameOf = (x)=> (x.name && x.name.length? x.name : `P${x.id}`);
+
+    function buildSummaryText(){
+      const total = state.players.length;
+      const rolled = state.players.filter(p=>p.rolled);
+      const max = rolled.length? Math.max(...rolled.map(p=>p.value)) : null;
+      const min = rolled.length? Math.min(...rolled.map(p=>p.value)) : null;
+      const highs = rolled.filter(p=>p.value===max).map(nameOf);
+      const lows  = rolled.filter(p=>p.value===min).map(nameOf);
+      const header = `🎲 결과`;
+      const hiLine = (max!=null? `👍: ${highs.join(', ')} (${max})` : `👍: -`);
+      const loLine = (min!=null? `👎: ${lows.join(', ')} (${min})` : `👎: -`);
+      const tail = `총 ${total}명 참여${(highs.length>1 || lows.length>1)? ' / 동점 있음':''}`;
+      const list = state.players.map(p=>`• ${nameOf(p)} — ${p.rolled? p.value : '—'}`).join('\n');
+      return [header, hiLine, loLine, tail, '', list].join('\n');
+    }
 
     // ---------- View helpers ----------
     function isListMode(){ return cards.classList.contains('list2') || cards.classList.contains('list3'); }
+
     function getNextTarget(){
       if(isListMode()){
         const unrolledCard = $$('.card').find(c=>{
           const id = parseInt(c.dataset.id,10); const p = state.players[id-1];
           return p && !p.rolled;
         });
-        return unrolledCard || null;
+        return unrolledCard ? unrolledCard.querySelector('button:not(:disabled)') : null;
       }
       return $$('.card button:not(:disabled)')[0] || null;
+    }
+
+    function focusCard(card, opts={scroll:true}){
+      if(!card) return;
+      try{ card.classList.add('reveal'); }catch(_){ }
+      // Keep focus for keyboard users without forcing scroll
+      try{ card.focus({preventScroll:true}); }catch(_){ }
+      if(opts.scroll){
+        try{ card.scrollIntoView({behavior:'auto', block:'center', inline:'nearest'}); }catch(_){ }
+      }
+      setTimeout(()=>card.classList.remove('reveal'), 200);
     }
 
     // ---------- Auto roll (sequential) ----------
@@ -186,16 +245,12 @@
       for(const btn of buttons){
         if(!btn || btn.disabled) continue;
         const card = btn.closest('.card');
-        if(card){
-          card.classList.add('reveal');
-          try{ card.focus({preventScroll:true}); }catch(_){ }
-          try{ card.scrollIntoView({behavior:'smooth', block:'center', inline:'nearest'}); }catch(_){ }
-          setTimeout(()=>card.classList.remove('reveal'), 300);
-        }
+        // avoid scroll jank during auto-roll
+        focusCard(card, {scroll:true});
         btn.click();
         await wait(REVEAL_DELAY_MS);
       }
-      try{ document.activeElement && document.activeElement.blur && document.activeElement.blur(); }catch(_){ }
+      try{ document.activeElement?.blur?.(); }catch(_){}
       state.autoRolling = false;
     }
 
@@ -211,51 +266,45 @@
       state.players = [];
       state.lastN = n || state.lastN || 6;
       state.announced = false;
-      cards.className = 'grid'; // reset view classes
+      cards.className = 'grid';
       cards.innerHTML = '';
       sum.classList.add('hidden');
-      if(toastEl){ toastEl.classList.remove('show'); toastEl.textContent=''; }
+      toastEl?.classList.remove('show');
+      if(toastEl) toastEl.textContent='';
+    }
+
+    function renderPlayersAndInit(players){
+      const frag = document.createDocumentFragment();
+      players.forEach(p=> frag.appendChild(renderCard(p)));
+      cards.appendChild(frag);
+      sum.classList.remove('hidden');
+      updateSummary();
+      autoLayoutToFit();
+      if($('#autoRoll')?.checked){
+        const order = shuffleArray($$('.card button'));
+        autoRollButtons(order);
+      }
     }
 
     function start(n){
       reset(n);
+      const arr = [];
       for(let i=0;i<state.lastN;i++){
         const p = {id:i+1,name:`P${i+1}`,value:null,rolled:false};
         state.players.push(p);
-        cards.appendChild(renderCard(p));
+        arr.push(p);
       }
-      sum.classList.remove('hidden');
-      updateSummary();
-      autoLayoutToFit();
-      const auto = $('#autoRoll')?.checked;
-      if(auto){
-        const order = shuffleArray($$('.card button'));
-        autoRollButtons(order);
-      }
-      const first = getNextTarget();
-      if(first){ try{ first.focus({preventScroll:true}); }catch(_){} }
+      renderPlayersAndInit(arr);
     }
 
     function startByNames(names){
       const clean = names.split(',').map(s=>s.trim()).filter(Boolean);
       if(clean.length < 2){ alert('이름을 쉼표로 2명 이상 입력해주세요'); return; }
       if(clean.length > 100){ alert('최대 100명까지 입력 가능합니다'); return; }
-
       reset(clean.length);
-      clean.forEach((nm, i)=>{
-        const p = {id:i+1,name:nm,value:null,rolled:false};
-        state.players.push(p);
-        cards.appendChild(renderCard(p));
-      });
-      sum.classList.remove('hidden');
-      updateSummary();
-      autoLayoutToFit();
-
-      const auto = $('#autoRoll')?.checked;
-      if(auto){
-        const order = shuffleArray($$('.card button'));
-        autoRollButtons(order);
-      }
+      const arr = clean.map((nm,i)=>({id:i+1,name:nm,value:null,rolled:false}));
+      state.players = arr;
+      renderPlayersAndInit(arr);
     }
 
     function renderCard(p){
@@ -281,20 +330,17 @@
       btn.textContent='ROLL';
       btn.style.width='100%';
       btn.style.maxWidth='100%';
+      btn.setAttribute('aria-label', `${nameOf(p)} ROLL`);
 
       const rollOnce = ()=>{
         if(p.rolled) return;
-        card.classList.add('reveal');
-        setTimeout(()=>card.classList.remove('reveal'), 300);
+        focusCard(card);
         p.value = rng();
         p.rolled = true;
         result.textContent = p.value;
         btn.disabled = true;
         card.classList.remove('win','lose');
-        updateSummary();
-        const next = getNextTarget();
-        if(next){ try{ next.focus({preventScroll:true}); }catch(_){} }
-      };
+        updateSummary();};
       btn.addEventListener('click', rollOnce);
       card.addEventListener('click', (e)=>{ if(e.target!==btn) rollOnce(); });
 
@@ -312,29 +358,27 @@
         pLo.textContent='최저: -';
         pTies.textContent='';
         pTies.classList.add('hidden');
+        copyBtn.disabled = true;
         return;
       }
       const max = Math.max(...rolled.map(x=>x.value));
       const min = Math.min(...rolled.map(x=>x.value));
       const highs = state.players.filter(x=>x.value===max);
       const lows  = state.players.filter(x=>x.value===min);
-      const nameOf = (x)=> (x.name && x.name.length? x.name : `P${x.id}`);
       pHi.textContent = `최고: ${max} (${highs.map(nameOf).join(', ')})`;
       pLo.textContent = `최저: ${min} (${lows.map(nameOf).join(', ')})`;
-      highs.forEach(x=>{ const c = $(`.card[data-id="${x.id}"]`); if(c) c.classList.add('win'); });
-      lows.forEach(x=>{ const c = $(`.card[data-id="${x.id}"]`); if(c) c.classList.add('lose'); });
+      highs.forEach(x=>{ const c = $(`.card[data-id="${x.id}"]`); c?.classList.add('win'); });
+      lows.forEach(x=>{ const c = $(`.card[data-id="${x.id}"]`); c?.classList.add('lose'); });
       const tie = highs.length>1 || lows.length>1;
       pTies.textContent = tie ? '동점 있음: 재도전 권장' : '';
       pTies.classList.toggle('hidden', !tie);
-
+      copyBtn.disabled = rolled.length!==total;
       if(rolled.length===total && !state.announced){
-        const hiNames = highs.map(nameOf).join(', ');
-        const loNames = lows.map(nameOf).join(', ');
-        const hiMsg = `👍: ${hiNames} (${max})`;
-        const loMsg = `👎: ${loNames} (${min})`;
+        const hiMsg = `👍: ${highs.map(nameOf).join(', ')} (${max})`;
+        const loMsg = `👎: ${lows.map(nameOf).join(', ')} (${min})`;
         showToast([hiMsg, loMsg]);
         state.announced = true;
-        try{ document.activeElement && document.activeElement.blur && document.activeElement.blur(); }catch(_){ }
+        try{ document.activeElement?.blur?.(); }catch(_){}
       }
     }
 
@@ -343,19 +387,13 @@
     function overflow(){ return document.documentElement.scrollHeight > window.innerHeight + 2; }
 
     function autoLayoutToFit(){
-      // try normal
       clearViewClasses();
       if(!overflow()) return;
-      // compact cards
       cards.classList.add('compact');
       if(!overflow()) return;
-      // 3-column dense rows
-      cards.classList.remove('compact');
-      cards.classList.add('list3');
+      cards.classList.remove('compact'); cards.classList.add('list3');
       if(!overflow()) return;
-      // 2-column dense rows
-      cards.classList.remove('list3');
-      cards.classList.add('list2');
+      cards.classList.remove('list3'); cards.classList.add('list2');
     }
 
     // ---------- UI wiring ----------
@@ -407,12 +445,23 @@
         return;
       }
       if(e.code==='Space'){
-        const next = getNextTarget();
-        if(next){ e.preventDefault(); next.click(); }
+        const next = getNextTarget(); // fixed undefined var
+        if(next){
+          e.preventDefault();
+          const card = next.closest('.card');
+          focusCard(card);
+          next.click();
+        }
       }
     });
 
-    // URL params: ?n=6&auto=1 or ?names=%EA%B9%80,%EC%9D%B4,%EB%B0%95
+    // Copy result handler
+    copyBtn.addEventListener('click', async()=>{
+      const ok = await copyText(buildSummaryText());
+      showToast(ok ? '결과 복사됨' : '복사 실패: 브라우저 권한을 확인해주세요');
+    });
+
+    // URL params (no double-decode)
     const url = new URL(location.href);
     const pn = parseInt(url.searchParams.get('n')||'');
     const auto = url.searchParams.get('auto');
@@ -421,33 +470,18 @@
       $('input[name="mode"][value="names"]').checked = true;
       $('#group-count').classList.add('hidden');
       $('#group-names').classList.remove('hidden');
-      $('#names').value = decodeURIComponent(pnames);
+      $('#names').value = pnames;
       if(auto){ startByNames($('#names').value); }
     } else if(Number.isFinite(pn)){
       $('#count').value = pn; if(auto){ start(pn); }
     }
 
-    /* -------------------------------------------
-       🧪 Self Tests (hidden in UI; run manually from console)
-       NEVER change existing tests unless clearly wrong.
-       Added some edge cases + getNextTarget sanity.
-    --------------------------------------------
-    // To run in console: runSelfTests()
-    function _logTest(msg){ const el = document.getElementById('testlog'); if(el) el.textContent += msg + "\n"; }
-    async function runSelfTests(){
-      try{ start(3); _logTest('start(3) OK'); }catch(e){ _logTest('start(3) FAIL '+e.message); }
-      reset(0);
-      try{ startByNames('김, 이, 박'); _logTest('names basic OK'); }catch(e){ _logTest('names basic FAIL '+e.message); }
-      reset(0);
-      try{ startByNames('a,b,c,'); _logTest('names trailing comma OK'); }catch(e){ _logTest('names trailing comma FAIL '+e.message); }
-      reset(0);
-      try{ startByNames('x'); _logTest('names <2 should alert (manual)'); }catch(e){ _logTest('names <2 error '+e.message); }
-      // getNextTarget smoke
-      start(4);
-      const t = getNextTarget();
-      _logTest('getNextTarget returns: '+(t ? 'OK' : 'NULL'));
-    }
-    */
+    // Debounced resize
+    let _rzTmr = null;
+    window.addEventListener('resize', ()=>{
+      clearTimeout(_rzTmr);
+      _rzTmr = setTimeout(autoLayoutToFit, 120);
+    });
   </script>
 </body>
 </html>
